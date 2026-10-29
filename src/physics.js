@@ -43,13 +43,12 @@ export function calculateHydrodynamics(rainMmHr, vehicleParams, roadParams) {
     };
   }
 
-  // Gallaway Water Film Thickness (WFT) empirical formulation (Texas A&M / FHWA)
-  // WFT = 0.00338 * [ (L^0.43 * I^0.59 * T^0.11) / (S^0.42) ] - T
-  const wftRaw = 0.00338 * ((Math.pow(L, 0.43) * Math.pow(rainMmHr, 0.59) * Math.pow(T, 0.11)) / Math.pow(slopeGrade, 0.42)) - T;
+  // Gallaway Water Film Thickness (WFT) empirical formulation in SI metric units:
+  // WFT = 0.01485 * [ (L^0.43 * I^0.59 * T^0.11) / (S^0.42) ] - T
+  const wftRaw = 0.01485 * ((Math.pow(L, 0.43) * Math.pow(rainMmHr, 0.59) * Math.pow(T, 0.11)) / Math.pow(slopeGrade, 0.42)) - T;
   const wft = Math.max(0.0, Number(wftRaw.toFixed(2)));
 
-  // Horne Dynamic Hydroplaning Velocity (NASA / FAA) adjusted for residual tire tread depth:
-  // V_p = 6.35 * sqrt(P) * (tread_depth / nominal_tread)^0.15
+  // Horne Dynamic Hydroplaning Velocity (NASA / FAA) adjusted for residual tire tread depth
   const baseVp = 6.35 * Math.sqrt(pressureKpa);
   const treadFactor = Math.pow(Math.max(0.1, treadMm / 8.0), 0.15);
   const aquaplaneSpeed = Math.max(
