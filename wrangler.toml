@@ -1,11 +1,8 @@
-name = "hydro-traction-wire"
+name = "hydro-pavement-friction-edge"
 main = "src/index.js"
 compatibility_date = "2026-10-29"
+compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
 [observability]
 enabled = true
-
-# Enables Cache API globally across the Cloudflare Edge
-[rules]
-type = "ESModule"
