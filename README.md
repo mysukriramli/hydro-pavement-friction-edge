@@ -1,16 +1,16 @@
-# 🌊 Hydro Pavement Friction Edge (v2.0)
+# 🌊 Hydro Pavement Friction Edge Wire
 
-A production-grade, zero-auth RPC micro-edge built on Cloudflare Workers for autonomous vehicle and robotics motion planners. It computes deterministic asphalt hydrodynamics, dynamic water film thickness, and LiDAR attenuation mapping in real-time.
+A zero-authentication, edge-native micro-service deployed on Cloudflare Workers. It ingests open meteorological sensors on-demand and computes deterministic road hydrodynamics, aquaplaning thresholds, friction coefficients, and LiDAR degradation states for autonomous vehicles (AVs), delivery robots, and on-demand dispatch swarms.
 
-## v2 Architecture Enhancements
-1. **Sub-Millisecond H3 Edge Caching**: Utilizes Cloudflare `caches.default` keyed by H3 Res-7 indexing. Concurrent vehicles traversing the same 5 km² hex cell trigger 4ms cache hits instead of redundant API calls.
-2. **Parametric Vehicle Profiles**: Implements dynamic Horne Tire Dynamics. Automatically adjusts aquaplaning thresholds based on vehicle weight, tire pressure (`pressure_kpa`), and tread depth (Sedan, Heavy Truck, Two-Wheeler, Delivery Bot).
-3. **Route Corridor Batching**: Submit an entire polyline of waypoints via `POST /v1/evaluate-route`. The edge deduplicates the route into spatial H3 cells and computes safety vectors concurrently.
-4. **Cryptographic Witness Vector**: Every payload is signed at the edge using `crypto.subtle` (Ed25519/SHA-256) to provide an untamperable audit trail for insurance underwriters and dispatch telemetry logs.
-5. **Multi-Sensor Reconciliation**: Bypasses single points of failure. Queries `Open-Meteo` convective radar first, with an automatic sub-second fallback to `NOAA Aviation METAR` terminals.
+## Architecture Highlights
+- **Sub-Millisecond Edge Caching**: Caches spatial evaluations across Uber H3 Resolution-7 cells via `caches.default`.
+- **Closed-Form Physical Formulations**: Implements Gallaway Water Film Thickness (WFT) and Horne NASA Dynamic Hydroplaning velocity equations.
+- **Parametric Vehicle Profiles**: Tailored physics for sedans, delivery motorcycles/e-bikes, commercial trucks, and sidewalk robots.
+- **Failover Sensor Ingestion**: Primary Open-Meteo surface precipitation API with zero-auth fallback to NOAA Aviation Weather METAR optical runway sensors.
+- **Cryptographic Audit Trail**: Each response includes a deterministic SHA-256 witness hash for insurance underwriting and dispatch audit logs.
 
-## Agentic API Usage (Zero Authentication Required)
+## API Specification
 
-### 1. Point Evaluation (GET)
+### 1. Instant Point Evaluation
 ```bash
-curl "https://<your-worker-subdomain>.workers.dev/v1/evaluate?lat=3.139&lon=101.686&vehicle=heavy_truck"
+curl -X GET "https://hydro-pavement-friction-edge.<subdomain>.workers.dev/v1/evaluate?lat=3.1390&lon=101.6869&vehicle_type=two_wheeler"
