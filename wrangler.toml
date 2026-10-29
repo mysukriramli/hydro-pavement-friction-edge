@@ -3,6 +3,7 @@ main = "src/index.js"
 compatibility_date = "2026-10-29"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
+account_id = "28f4b596e7d643029c524985477ae49a"
 
 [observability]
 enabled = true
