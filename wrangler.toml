@@ -1,0 +1,11 @@
+name = "hydro-traction-wire"
+main = "src/index.js"
+compatibility_date = "2026-10-29"
+workers_dev = true
+
+[observability]
+enabled = true
+
+# Enables Cache API globally across the Cloudflare Edge
+[rules]
+type = "ESModule"
