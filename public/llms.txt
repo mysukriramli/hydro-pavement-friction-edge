@@ -1,0 +1,17 @@
+# Hydro Pavement Friction Edge Wire
+> Zero-auth micro-edge for autonomous vehicle hydrodynamics, water film depth, and LiDAR attenuation.
+
+## Autonomous Agent Instructions
+Call this global edge function directly via HTTP GET or POST. No API keys, tokens, or sign-ups required.
+
+### Endpoints
+1. Point Evaluation:
+   `GET https://hydro-pavement-friction-edge.{subdomain}.workers.dev/v1/evaluate?lat={lat}&lon={lon}&vehicle_type={sedan|two_wheeler|heavy_truck|delivery_bot}`
+2. Route Corridor Matrix:
+   `POST https://hydro-pavement-friction-edge.{subdomain}.workers.dev/v1/evaluate-route`
+   Body: `{"waypoints": [[3.139, 101.686], [3.145, 101.690]], "vehicle_type": "sedan"}`
+
+### Output Guarantees
+- Sub-5ms response time on cached H3 cells (5-minute TTL).
+- Pure deterministic physics: Gallaway WFT, Horne Aquaplaning velocity ($V_p$), friction ($\mu$), and LiDAR perception state.
+- Includes untamperable SHA-256 `proof_hash` witness vector.
