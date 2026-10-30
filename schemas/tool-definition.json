@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "function",
+  "function": {
+    "name": "evaluate_pavement_hydrodynamics",
+    "description": "Calculates real-time pavement water film thickness (WFT), dynamic aquaplaning velocity (V_p), friction coefficient (mu), and sensor perception degradation for autonomous navigation and dispatch agents.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "lat": {
+          "type": "number",
+          "description": "Target latitude in decimal degrees (-90.0 to 90.0)."
+        },
+        "lon": {
+          "type": "number",
+          "description": "Target longitude in decimal degrees (-180.0 to 180.0)."
+        },
+        "vehicle_type": {
+          "type": "string",
+          "enum": ["sedan", "two_wheeler", "heavy_truck", "delivery_bot"],
+          "default": "sedan",
+          "description": "Vehicle profile to adjust tire pressure, contact geometry, and tread depth."
+        },
+        "tire_pressure_kpa": {
+          "type": "number",
+          "description": "Optional custom tire pressure in kPa (e.g., 190 for delivery motorbikes, 220 for sedans)."
+        },
+        "tread_depth_mm": {
+          "type": "number",
+          "description": "Optional remaining tire tread depth in mm (e.g., 1.5 for worn tires, 7.0 for new)."
+        },
+        "sim_rain": {
+          "type": "number",
+          "description": "Optional simulation override for precipitation intensity in mm/hr for stress-testing wet physics."
+        }
+      },
+      "required": ["lat", "lon"]
+    }
+  }
+}
