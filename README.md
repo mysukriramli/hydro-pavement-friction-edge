@@ -14,3 +14,22 @@ A zero-authentication, edge-native micro-service deployed on Cloudflare Workers.
 ### 1. Instant Point Evaluation
 ```bash
 curl -X GET "https://hydro-pavement-friction-edge.<subdomain>.workers.dev/v1/evaluate?lat=3.1390&lon=101.6869&vehicle_type=two_wheeler"
+## 🤖 LLM Agent Integration & Function Calling
+
+Autonomous agents can invoke this service directly using the tool specification in [`schemas/tool-definition.json`](./schemas/tool-definition.json) or by reading the machine-readable manifest at `/llms.txt`.
+
+### OpenAI / LangChain Tool Integration (Python)
+
+```python
+import json
+import requests
+
+# Load definition into your LLM tools array
+with open("schemas/tool-definition.json") as f:
+    hydro_tool_spec = json.load(f)
+
+def run_hydro_tool(lat: float, lon: float, vehicle_type: str = "sedan", **kwargs):
+    endpoint = "[https://hydro-pavement-friction-edge.mysukriramli.workers.dev/v1/evaluate](https://hydro-pavement-friction-edge.mysukriramli.workers.dev/v1/evaluate)"
+    params = {"lat": lat, "lon": lon, "vehicle_type": vehicle_type, **kwargs}
+    res = requests.get(endpoint, params=params, timeout=5)
+    return res.json()
