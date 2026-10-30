@@ -14,17 +14,27 @@ export const SURFACE_TEXTURE_DEPTHS = {
 
 export function resolveVehicleParameters(vehicleType, customKpa, customTreadMm) {
   const profile = VEHICLE_PROFILES[vehicleType] || VEHICLE_PROFILES.sedan;
-  const pressureKpa = customKpa ? parseFloat(customKpa) : profile.pressure_kpa;
-  const treadMm = customTreadMm !== undefined ? parseFloat(customTreadMm) : profile.tread_mm;
+  
+  const parsedKpa = customKpa != null ? parseFloat(customKpa) : NaN;
+  const pressureKpa = !isNaN(parsedKpa) && parsedKpa > 0 ? parsedKpa : profile.pressure_kpa;
+
+  const parsedTread = customTreadMm != null ? parseFloat(customTreadMm) : NaN;
+  const treadMm = !isNaN(parsedTread) && parsedTread >= 0 ? parsedTread : profile.tread_mm;
+
   return { pressureKpa, treadMm };
 }
 
 export function resolveRoadParameters(surfaceType, customSlope, customLanes) {
   const surface = SURFACE_TEXTURE_DEPTHS[surfaceType] ? surfaceType : "asphalt";
   const T = SURFACE_TEXTURE_DEPTHS[surface];
-  const slopeGrade = customSlope ? Math.max(0.005, parseFloat(customSlope)) : 0.02; // Default 2% cross-slope
-  const lanes = customLanes ? Math.max(1, parseInt(customLanes, 10)) : 3;
+
+  const parsedSlope = customSlope != null ? parseFloat(customSlope) : NaN;
+  const slopeGrade = !isNaN(parsedSlope) ? Math.max(0.005, parsedSlope) : 0.02; // Default 2% cross-slope
+
+  const parsedLanes = customLanes != null ? parseInt(customLanes, 10) : NaN;
+  const lanes = !isNaN(parsedLanes) ? Math.max(1, parsedLanes) : 3;
   const L = lanes * 3.65; // Lane drainage path in meters
+
   return { surface, T, slopeGrade, lanes, L };
 }
 
@@ -48,7 +58,8 @@ export function calculateHydrodynamics(rainMmHr, vehicleParams, roadParams) {
   const wftRaw = 0.01485 * ((Math.pow(L, 0.43) * Math.pow(rainMmHr, 0.59) * Math.pow(T, 0.11)) / Math.pow(slopeGrade, 0.42)) - T;
   const wft = Math.max(0.0, Number(wftRaw.toFixed(2)));
 
-  // Horne Dynamic Hydroplaning Velocity (NASA / FAA) adjusted for residual tire tread depth
+  // Horne Dynamic Hydroplaning Velocity (NASA / FAA) adjusted for residual tire tread depth:
+  // V_p = 6.35 * sqrt(P) * (tread_depth / nominal_tread)^0.15
   const baseVp = 6.35 * Math.sqrt(pressureKpa);
   const treadFactor = Math.pow(Math.max(0.1, treadMm / 8.0), 0.15);
   const aquaplaneSpeed = Math.max(
@@ -68,7 +79,7 @@ export function calculateHydrodynamics(rainMmHr, vehicleParams, roadParams) {
     sensorState = "PERCEPTION_DEGRADED";
   }
 
-  // Two-Wheel Delivery Delay Multiplier (Grab / Uber Eats rider sheltering behavior)
+  // Two-Wheel Delivery Delay Multiplier (Rider sheltering / transit slowdown)
   let delayMult = 1.0;
   if (rainMmHr >= 30.0) delayMult = 2.4;
   else if (rainMmHr >= 12.0) delayMult = 1.6;
