@@ -10,7 +10,7 @@ const CORS_HEADERS = {
   "Content-Type": "application/json"
 };
 
-const H3_RESOLUTION = 7; // ~5.16 km² hexagonal cells
+const H3_RESOLUTION = 7;
 
 async function evaluateSinglePoint(lat, lon, queryParams) {
   const h3Cell = latLngToCell(lat, lon, H3_RESOLUTION);
@@ -26,15 +26,22 @@ async function evaluateSinglePoint(lat, lon, queryParams) {
   );
 
   const sensor = await fetchReconciledRainfall(lat, lon);
-  const physics = calculateHydrodynamics(sensor.rain_mm, vehicleParams, roadParams);
+  
+  // Optional test simulation override (e.g. &sim_rain=35.0)
+  const simRain = queryParams.get("sim_rain");
+  const parsedSim = simRain != null ? parseFloat(simRain) : NaN;
+  const effectiveRain = !isNaN(parsedSim) && parsedSim >= 0 ? parsedSim : sensor.rain_mm;
+  const isSimulated = !isNaN(parsedSim) && parsedSim >= 0;
+
+  const physics = calculateHydrodynamics(effectiveRain, vehicleParams, roadParams);
   const evaluatedAt = new Date().toISOString();
 
   const responseBody = {
     request_coordinates: { latitude: lat, longitude: lon },
     h3_index_res7: h3Cell,
     sensor_telemetry: {
-      rain_intensity_mm_hr: sensor.rain_mm,
-      upstream_source: sensor.source
+      rain_intensity_mm_hr: effectiveRain,
+      upstream_source: isSimulated ? "SIMULATED_TEST_OVERRIDE" : sensor.source
     },
     vehicle_profile: {
       pressure_kpa: vehicleParams.pressureKpa,
@@ -62,14 +69,13 @@ export default {
     const url = new URL(request.url);
     const { pathname, searchParams } = url;
 
-    // Discovery & LLM Agent Documentation Endpoints
     if (pathname === "/" || pathname === "/llms.txt") {
       const doc = {
         wire: "hydro-pavement-friction-edge",
         version: "1.1.0",
         engine: "Gallaway-WFT / Horne-Hydroplaning / Uber-H3",
         endpoints: {
-          point_eval: "GET /v1/evaluate?lat={lat}&lon={lon}&vehicle_type={sedan|two_wheeler|heavy_truck|delivery_bot}",
+          point_eval: "GET /v1/evaluate?lat={lat}&lon={lon}&vehicle_type={sedan|two_wheeler|heavy_truck|delivery_bot}&sim_rain={mm_hr}",
           route_eval: "POST /v1/evaluate-route"
         },
         supported_profiles: VEHICLE_PROFILES,
@@ -78,7 +84,6 @@ export default {
       return new Response(JSON.stringify(doc, null, 2), { headers: CORS_HEADERS });
     }
 
-    // 1. Single Point Instant Evaluation (With Cloudflare Edge Caching)
     if (pathname === "/v1/evaluate" && request.method === "GET") {
       const latStr = searchParams.get("lat");
       const lonStr = searchParams.get("lon");
@@ -100,11 +105,15 @@ export default {
         );
       }
 
-      // Check Cloudflare Edge Cache API keyed by H3 + vehicle type
+      // Include custom params in cache key to avoid cache collisions
       const h3Cell = latLngToCell(lat, lon, H3_RESOLUTION);
       const vType = searchParams.get("vehicle_type") || "sedan";
+      const simRain = searchParams.get("sim_rain") || "";
+      const tread = searchParams.get("tread_depth_mm") || "";
+      const pressure = searchParams.get("tire_pressure_kpa") || "";
+
       const cache = caches.default;
-      const cacheUrl = new URL(`https://edge-cache.internal/cells/${h3Cell}?v=${vType}`);
+      const cacheUrl = new URL(`https://edge-cache.internal/cells/${h3Cell}?v=${vType}&sr=${simRain}&t=${tread}&p=${pressure}`);
       const cacheKey = new Request(cacheUrl.toString(), { method: "GET" });
 
       let cachedResponse = await cache.match(cacheKey);
@@ -125,12 +134,11 @@ export default {
           status: 200,
           headers: {
             ...CORS_HEADERS,
-            "Cache-Control": "public, max-age=300", // 5-minute spatial cache TTL
+            "Cache-Control": "public, max-age=300",
             "X-Edge-Cache": "MISS"
           }
         });
 
-        // Asynchronously populate edge cache without blocking execution
         ctx.waitUntil(cache.put(cacheKey, edgeResponse.clone()));
         return edgeResponse;
       } catch (err) {
@@ -141,7 +149,6 @@ export default {
       }
     }
 
-    // 2. Batch Waypoint & Corridor Evaluation (Route Matrix)
     if (pathname === "/v1/evaluate-route" && request.method === "POST") {
       try {
         const body = await request.json();
@@ -155,9 +162,8 @@ export default {
           );
         }
 
-        // Deduplicate waypoints into unique H3 cells along the corridor
         const cellMap = new Map();
-        for (const pt of waypoints.slice(0, 50)) { // Cap batch to 50 waypoints per request
+        for (const pt of waypoints.slice(0, 50)) {
           if (Array.isArray(pt) && pt.length >= 2) {
             const [wLat, wLon] = pt;
             const cId = latLngToCell(wLat, wLon, H3_RESOLUTION);
@@ -168,6 +174,8 @@ export default {
         }
 
         const syntheticParams = new URLSearchParams({ vehicle_type: vehicleType });
+        if (body.sim_rain) syntheticParams.set("sim_rain", body.sim_rain);
+
         const evaluatedCells = await Promise.all(
           Array.from(cellMap.entries()).map(async ([cId, coords]) => {
             return await evaluateSinglePoint(coords.lat, coords.lon, syntheticParams);
