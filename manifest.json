@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "hydro-pavement-friction-edge",
+  "namespace": "mysukriramli",
+  "version": "1.0.0",
+  "type": "telemetry/physical-edge",
+  "status": "ACTIVE",
+  "mesh": {
+    "index": "https://github.com/mysukriramli/whatrepo",
+    "heartbeat": "https://github.com/mysukriramli/agent-canary-wire",
+    "time_anchor": "https://github.com/mysukriramli/agent-world-time"
+  },
+  "dependencies": [
+    {
+      "repo": "H3-Earth-State",
+      "purpose": "Spatial indexing and hexagonal coordinate cell binding",
+      "required": true
+    },
+    {
+      "repo": "spatial-geometry-proof-wire",
+      "purpose": "Polygon and boundary cryptographic verification",
+      "required": false
+    }
+  ],
+  "entrypoints": {
+    "module": "src/friction_model.py",
+    "payload_format": "application/json",
+    "live_feed": "data/latest_friction_coefficients.json",
+    "history_path": "data/history/{YYYY}/{MM}/{YYYY-MM-DD}.jsonl"
+  },
+  "telemetry_contract": {
+    "coordinate_system": "H3_INDEX_RES_8",
+    "primary_metrics": [
+      {
+        "field": "friction_coefficient_mu",
+        "type": "float",
+        "range": [0.0, 1.0],
+        "description": "Dynamic tire-to-pavement friction coefficient"
+      },
+      {
+        "field": "hydroplane_risk_index",
+        "type": "float",
+        "range": [0.0, 1.0],
+        "description": "Calculated surface water displacement risk"
+      }
+    ],
+    "update_frequency": "0 * * * *",
+    "ttl_seconds": 3600
+  },
+  "contact": {
+    "maintainer": "Muhammad Sukri Bin Ramli",
+    "github": "https://github.com/mysukriramli",
+    "issue_tracker": "https://github.com/mysukriramli/hydro-pavement-friction-edge/issues"
+  }
+}
